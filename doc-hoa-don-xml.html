@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+  <meta charset="UTF-8">
+  <title>đọc hoá đơn xml ra dạng bảng</title>
+  <link rel="apple-touch-icon" type="image/png" href="https://cpwebassets.codepen.io/assets/favicon/apple-touch-icon-5ae1a0698dcc2402e9712f7d01ed509a57814f994c660df9f7a952f3060705ee.png" />
+  <meta name="apple-mobile-web-app-title" content="CodePen">
+  <link rel="shortcut icon" type="image/x-icon" href="https://cpwebassets.codepen.io/assets/favicon/favicon-aec34940fbc1a6e787974dcd360f2c6b63348d4b1f4e06c77743096d55480f33.ico" />
+  <link rel="mask-icon" type="image/x-icon" href="https://cpwebassets.codepen.io/assets/favicon/logo-pin-b4b4269c16397ad2f0f7a01bcdf513a1994f4c94b8af2f191c09eb0d601762b1.svg" color="#111" />
+  <!-- <script src="https://cpwebassets.codepen.io/assets/common/stopExecutionOnTimeout-2c7831bb44f98c1391d6a4ffda0e1fd302503391ca806e7fcc7b9b87197aec26.js"></script> -->
+  <link rel="canonical" href="https://codepen.io/dungsaga/pen/PoBxPoQ">
+
+  <style>
+    body {
+      background: #444;
+      color: #eee;
+    }
+    #filePicker {
+      display: inline-block;
+      width: 40%;
+      padding: 40px;
+      box-sizing: border-box;
+      border: 5px dashed mediumseagreen;
+      border-style: dashed solid;
+    }
+    #dedup {
+      padding: 20px 10px;
+    }
+    .columnToggler {
+      border: 5px dotted mediumseagreen;
+      border-style: solid dotted;
+      display: inline-block;
+      width: 35%;
+    }
+
+    .columnToggler span {
+      display: inline-block;
+      margin: 0 5px;
+    }
+
+    .columnToggler label {
+      display: inline-block;
+      padding: 5px 5px 5px 0;
+    }
+
+    input:hover,
+    label:hover {
+      cursor: pointer;
+      background: darkseagreen;
+    }
+    #result td:nth-last-child(-n+5) {
+      text-align: right;
+      position: relative;
+    }
+    #result td:nth-last-child(-n+5)::before {
+        position: absolute;
+        right: 1.8em;
+        top: 0.4em;
+        z-index: -5;
+        display: block;
+        background: #000;
+        opacity: 0.4;
+
+        content: '';
+        width: 1.5em;
+        height: 2em;
+    /*     content: '___'; */
+    /*     line-height: 200%; */
+    }
+    .hidden {
+      display: none;
+    }
+
+    #log .Error {
+      color: indianred;
+    }
+    #log .NotFoundError {
+      color: palevioletred;
+    }
+    #log div:hover,
+    #result tr:hover {
+      background: darkseagreen;
+      /* zoom: 1.4; */
+      /* transition: zoom 1s; */
+      /* animation: 3s infinite alternate zooming; */
+    }
+    #result {
+      margin: 20px 0;
+    }
+  </style>
+
+  <script>
+    window.console = window.console || function(t) {};
+  </script>
+</head>
+
+<body translate="no">
+  <input id=filePicker type=file multiple accept="application/xml" title="kéo thả file xml vào đây" />
+  <input id="dedup" type="button" value="Loại bỏ trùng lặp"/>
+  <fieldset class=columnToggler>
+    <legend>Hiển thị cột</legend>
+  </fieldset>
+
+  <table id=result border=8 cellpadding=5>
+    <thead>
+      <tr>
+        <th class="NLap">Ngày</th>
+        <th class="SHDon">Số hoá đơn</th>
+        <th class="KHHDon hidden">Ký hiệu hoá đơn</th>
+        <th class="NBan">Người bán</th>
+        <th class="MST hidden">MST</th>
+        <th class="TgTCThue">Tiền trước thuế</th>
+        <th class="TgTThue">Tiền thuế</th>
+        <th class="TgTTTBSo">Tổng tiền</th>
+        <th class="file hidden">File hoá đơn</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+
+  <br/><!-- vertical spacer to make it easier to select result using mouse -->
+  <div id=log></div>
+
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.3/jquery.min.js'></script>
+  <script id="rendered-js" >
+    $(() => {
+      const makeCheckbox = (id, checked, label) => $('<span>').append([
+        $(`<input id=${id} type=checkbox ${checked}/>`),
+        $(`<label for=${id}>`).append(label),
+      ])
+      $('#result thead th.hidden').each(function() { // make checkbox for each column
+        const id = this.className.replace('hidden', '').trim()
+        const checked = this.className === id ? 'checked' : ''
+        $('.columnToggler').append(makeCheckbox(id, checked, this.innerText))
+      })
+      $('.columnToggler input').on('change', function() {
+        $('.' + this.id).toggle(this.checked)
+      }).change() // show/hide columns in #result
+
+      const parseFile = file => {
+        const reader = new FileReader()
+        reader.readAsText(file)
+        reader.onloadend = evt => {
+          const error = evt.target.error || parseData(evt.target.result, file.name) || ''
+          $('#log').append($('<div>').addClass(error.name).append(`${file.name} -- ${error}`))
+        }
+      }
+      $('#filePicker').on('change', function() { // parse each file and log error
+        $('#log').append($('<h4>').append(this.files.length + ' files:'))
+        for (let file of this.files) parseFile(file)
+      })
+
+      $('#dedup').on('click', () => {
+        let rows = $('#result > tbody tr').toArray()
+        rows.sort((a, b) => $(a).attr('id').localeCompare($(b).attr('id')))
+        rows = rows.filter((v, k) => $(v).attr('id') !== $(rows[k-1]).attr('id')) // remove duplicated id
+        $('#result > tbody').empty().append(rows)
+      })
+    })
+
+    function parseData(xmlData, fileName) { // parse xml data and append to #result
+      try {
+        const xml = $.parseXML(xmlData)
+        const HDon = $('HDon:root , TDiep:root > DLieu > HDon', xml) // TDiep.DLieu.HDon
+        const cols = [
+          $('<td class=NLap>').append(HDon.find('> DLHDon > TTChung > NLap').text()),
+          $('<td class=SHDon>').append(HDon.find('> DLHDon > TTChung > SHDon').text().replace(/^0+/,'')),
+          $('<td class=KHHDon>').append(HDon.find('> DLHDon > TTChung > KHHDon').text()),
+          $('<td class=NBan>').append(HDon.find('> DLHDon > NDHDon > NBan > Ten').text()),
+          $('<td class=MST>').append(HDon.find('> DLHDon > NDHDon > NBan > MST').text()),
+          $('<td class=TgTCThue>').append(HDon.find('> DLHDon > NDHDon > TToan > TgTCThue').text().replace(/\.0*/,'')),
+          $('<td class=TgTThue>').append(HDon.find('> DLHDon > NDHDon > TToan > TgTThue').text().replace(/\.0*/,'')),
+          $('<td class=TgTTTBSo>').append(HDon.find('> DLHDon > NDHDon > TToan > TgTTTBSo').text().replace(/\.0*/,'')),
+          $('<td class=file>').append(fileName),
+        ]
+        const id = cols[0].text() + cols[1].text() + cols[4].text() // NLap, SHDon, MST
+        $('#result > tbody').append($('<tr>').attr('id', id).append(cols)) // add 1 row for each file
+        $('.columnToggler input').change() // show/hide columns in #result
+      } catch (ex) {
+        console.warn(ex)
+        if (xmlData.startsWith('%PDF')) return Error('This is a PDF file')
+        if (xmlData.startsWith('PK\x03\x04')) return Error('This is a ZIP/DOCX/XLSX file')
+        return ex
+      }
+    }
+    //# sourceURL=pen.js
+  </script>
+</body>
+
+</html>
