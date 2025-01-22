@@ -126,6 +126,7 @@
   <div id=log></div>
 
   <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.3/jquery.min.js'></script>
+  <script src='https://unpkg.com/unzipit@1.4.3/dist/unzipit.min.js'></script>
   <script id="rendered-js" >
     $(() => {
       const makeCheckbox = (id, checked, label) => $('<span>').append([
@@ -143,7 +144,8 @@
 
       const parseFile = file => {
         const reader = new FileReader()
-        reader.readAsText(file)
+        if (file.name.endsWith('.zip')) reader.readAsArrayBuffer(file)
+        else reader.readAsText(file)
         reader.onloadend = evt => {
           const error = evt.target.error || parseData(evt.target.result, file.name) || ''
           $('#log').append($('<div>').addClass(error.name).append(`${file.name} -- ${error}`))
@@ -231,6 +233,7 @@
     }
     function parseData(xmlData, fileName) { // parse xml data and append to #result
       try {
+        if (fileName.endsWith('.zip')) return parseZipFile(xmlData, fileName), 'This is a ZIP file'
         const xml = $.parseXML(xmlData.replace(/(<\/?)inv:/g, '$1'))
         const rootSelectors = $.map(selectors, v=>v.root)
         const root = $(rootSelectors.join(','), xml).last()
@@ -257,8 +260,14 @@
       } catch (ex) {
         console.warn(ex)
         if (xmlData.startsWith('%PDF')) return Error('This is a PDF file')
-        if (xmlData.startsWith('PK\x03\x04')) return Error('This is a ZIP/DOCX/XLSX file')
+        if (xmlData.startsWith('PK\x03\x04')) return Error('This could be a DOCX/XLSX/ZIP file')
         return ex
+      }
+    }
+    async function parseZipFile(fileContent, fileName) {
+      const zipInfo =  await unzipit.unzipRaw(fileContent) // unzip(fileContent)
+      for (const entry of zipInfo.entries) {
+        if (entry.name.endsWith('.xml')) parseData(await entry.text(), fileName + '/' + entry.name)
       }
     }
     //# sourceURL=pen.js
