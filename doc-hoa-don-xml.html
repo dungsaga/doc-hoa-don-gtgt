@@ -162,17 +162,17 @@
 
     function parseData(xmlData, fileName) { // parse xml data and append to #result
       try {
-        const xml = $.parseXML(xmlData)
-        const HDon = $('HDon:root , TDiep:root > DLieu > HDon', xml) // TDiep.DLieu.HDon
+        const xml = $.parseXML(xmlData.replaceAll('<inv:', '<'))
+        const HDon = $('HoaDonDienTu:root > HoaDon > ThongTinHoaDon , invoice:root > invoiceData , HDon:root , TDiep:root > DLieu > HDon', xml) // TDiep.DLieu.HDon
         const cols = [
-          $('<td class=NLap>').append(HDon.find('> DLHDon > TTChung > NLap').text()),
-          $('<td class=SHDon>').append(HDon.find('> DLHDon > TTChung > SHDon').text().replace(/^0+/,'')),
-          $('<td class=KHHDon>').append(HDon.find('> DLHDon > TTChung > KHHDon').text()),
-          $('<td class=NBan>').append(HDon.find('> DLHDon > NDHDon > NBan > Ten').text()),
-          $('<td class=MST>').append(HDon.find('> DLHDon > NDHDon > NBan > MST').text()),
-          $('<td class=TgTCThue>').append(HDon.find('> DLHDon > NDHDon > TToan > TgTCThue').text().replace(/\.0*/,'')),
-          $('<td class=TgTThue>').append(HDon.find('> DLHDon > NDHDon > TToan > TgTThue').text().replace(/\.0*/,'')),
-          $('<td class=TgTTTBSo>').append(HDon.find('> DLHDon > NDHDon > TToan > TgTTTBSo').text().replace(/\.0*/,'')),
+          $('<td class=NLap>').append(HDon.find('NgayHoaDon , invoiceIssuedDate , > DLHDon > TTChung > NLap').text().replace(/T.+/, '')),
+          $('<td class=SHDon>').append(HDon.find('SoHoaDon , invoiceNumber , > DLHDon > TTChung > SHDon').text().replace(/^0+/, '')),
+          $('<td class=KHHDon>').append(HDon.find('Kyhieu , invoiceSeries , > DLHDon > TTChung > KHHDon').text()),
+          $('<td class=NBan>').append(HDon.find('TenNguoiBan , seller > sellerLegalName , > DLHDon > NDHDon > NBan > Ten').text()),
+          $('<td class=MST>').append(HDon.find('MaSoThueNguoiBan , seller > sellerTaxCode , > DLHDon > NDHDon > NBan > MST').text()),
+          $('<td class=TgTCThue>').append(HDon.find('TongTienTruocThue , totalAmountWithoutVAT , > DLHDon > NDHDon > TToan > TgTCThue').text().replace(/\.0*/, '')),
+          $('<td class=TgTThue>').append(HDon.find('TongTienThue , totalVATAmount , > DLHDon > NDHDon > TToan > TgTThue').text().replace(/\.0*/, '')),
+          $('<td class=TgTTTBSo>').append(HDon.find('TongTien , totalAmountWithVAT , > DLHDon > NDHDon > TToan > TgTTTBSo').text().replace(/\.0*/, '')),
           $('<td class=file>').append(fileName),
         ]
         const id = cols[0].text() + cols[1].text() + cols[4].text() // NLap, SHDon, MST
