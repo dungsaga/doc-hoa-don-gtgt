@@ -109,7 +109,9 @@
         <th class="SHDon">Số hoá đơn</th>
         <th class="KHHDon hidden">Ký hiệu hoá đơn</th>
         <th class="NBan">Người bán</th>
-        <th class="MST hidden">MST</th>
+        <th class="MSTban hidden">MST bán</th>
+        <th class="NMua hidden">Người mua</th>
+        <th class="MSTmua hidden">MST mua</th>
         <th class="TgTCThue">Tiền trước thuế</th>
         <th class="TgTThue">Tiền thuế</th>
         <th class="TgTTTBSo">Tổng tiền</th>
@@ -160,21 +162,89 @@
       })
     })
 
+    const selectors = {
+      ThongTinHoaDon: {
+        NLap      : '>NgayHoaDon',
+        SHDon     : '>SoHoaDon',
+        KHHDon    : '>Kyhieu',
+        NBan      : '>TenNguoiBan',
+        MSTban    : '>MaSoThueNguoiBan',
+        NMua      : '>TenNguoiMua',
+        MSTmua    : '>MaSoThueNguoiMua',
+        TgTCThue  : '>TongTienTruocThue',
+        TgTThue   : '>TongTienThue',
+        TgTTTBSo  : '>TongTien',
+      },
+      Invoice: {
+        NLap      : '>Content >ArisingDate',
+        SHDon     : '>Content >InvoiceNo',
+        KHHDon    : '>Content >SerialNo',
+        NBan      : '>Content >ComName',
+        MSTban    : '>Content >ComTaxCode',
+        NMua      : '>Content >CusName',
+        MSTmua    : '>Content >CusTaxCode',
+        TgTCThue  : '>Content >Total',
+        TgTThue   : '>Content >VATAmount',
+        TgTTTBSo  : '>Content >Amount',
+      },
+      invoiceData: {
+        NLap      : '>invoiceIssuedDate',
+        SHDon     : '>invoiceNumber',
+        KHHDon    : '>invoiceSeries',
+        NBan      : '>sellerLegalName , >seller >sellerLegalName',
+        MSTban    : '>sellerTaxCode   , >seller >sellerTaxCode',
+        NMua      : '>buyerLegalName  , >buyer  >buyerLegalName',
+        MSTmua    : '>buyerTaxCode    , >buyer  >buyerTaxCode',
+        TgTCThue  : '>totalAmountWithoutVAT',
+        TgTThue   : '>totalVATAmount',
+        TgTTTBSo  : '>totalAmountWithVAT',
+      },
+      INVOICEDATA: {
+        NLap      : '>MAIN >INVOICE_DATE',
+        SHDon     : '>MAIN >SERI_NO',
+        KHHDon    : '>MAIN >KY_HIEU',
+        NBan      : '>MAIN >SELLER', // >AGENT_NAME
+        MSTban    : '>MAIN >SELLER_VAT_CODE',
+        NMua      : '>MAIN >PAYER',
+        MSTmua    : '>MAIN >VATCODE',
+        TgTCThue  : '', // '>SALETOTALEXCLUDETAX >VN_SUM',
+        TgTThue   : '>GETVAT  >VN_VAT',
+        TgTTTBSo  : '>PAYMENT >AMOUNT', // >SALETOTAL >VN_SUM
+      },
+      HDon: {
+        NLap      : '>DLHDon >TTChung >NLap',
+        SHDon     : '>DLHDon >TTChung >SHDon',
+        KHHDon    : '>DLHDon >TTChung >KHHDon',
+        NBan      : '>DLHDon >NDHDon  >NBan  >Ten',
+        MSTban    : '>DLHDon >NDHDon  >NBan  >MST',
+        NMua      : '>DLHDon >NDHDon  >NMua  >Ten',
+        MSTmua    : '>DLHDon >NDHDon  >NMua  >MST',
+        TgTCThue  : '>DLHDon >NDHDon  >TToan >TgTCThue',
+        TgTThue   : '>DLHDon >NDHDon  >TToan >TgTThue',
+        TgTTTBSo  : '>DLHDon >NDHDon  >TToan >TgTTTBSo',
+      },
+    }
     function parseData(xmlData, fileName) { // parse xml data and append to #result
       try {
-        const xml = $.parseXML(xmlData.replaceAll('<inv:', '<'))
-        const HDon = $('HoaDonDienTu:root > HoaDon > ThongTinHoaDon , invoice:root > invoiceData , HDon:root , TDiep:root > DLieu > HDon', xml) // TDiep.DLieu.HDon
+        const xml = $.parseXML(xmlData.replace(/(<\/?)inv:/g, '$1'))
+        const root = $('HoaDonDienTu:root >HoaDon >ThongTinHoaDon , Invoice:root , invoice:root >invoiceData , INVOICEDATA:root , HDon:root , TDiep:root >DLieu >HDon', xml).last() // TDiep.DLieu.HDon
+        if (!root.length) return Error('Cannot detect schema of XML invoice')
+        const selector = selectors[root[0].tagName]
         const cols = [
-          $('<td class=NLap>').append(HDon.find('NgayHoaDon , invoiceIssuedDate , > DLHDon > TTChung > NLap').text().replace(/T.+/, '')),
-          $('<td class=SHDon>').append(HDon.find('SoHoaDon , invoiceNumber , > DLHDon > TTChung > SHDon').text().replace(/^0+/, '')),
-          $('<td class=KHHDon>').append(HDon.find('Kyhieu , invoiceSeries , > DLHDon > TTChung > KHHDon').text()),
-          $('<td class=NBan>').append(HDon.find('TenNguoiBan , seller > sellerLegalName , > DLHDon > NDHDon > NBan > Ten').text()),
-          $('<td class=MST>').append(HDon.find('MaSoThueNguoiBan , seller > sellerTaxCode , > DLHDon > NDHDon > NBan > MST').text()),
-          $('<td class=TgTCThue>').append(HDon.find('TongTienTruocThue , totalAmountWithoutVAT , > DLHDon > NDHDon > TToan > TgTCThue').text().replace(/\.0*/, '')),
-          $('<td class=TgTThue>').append(HDon.find('TongTienThue , totalVATAmount , > DLHDon > NDHDon > TToan > TgTThue').text().replace(/\.0*/, '')),
-          $('<td class=TgTTTBSo>').append(HDon.find('TongTien , totalAmountWithVAT , > DLHDon > NDHDon > TToan > TgTTTBSo').text().replace(/\.0*/, '')),
-          $('<td class=file>').append(fileName),
+          $('<td class=NLap>'     ).append(root.find(selector.NLap  ).text().replace(/[ T].+/, '')),
+          $('<td class=SHDon>'    ).append(root.find(selector.SHDon ).text().replace(/^0+/, '')),
+          $('<td class=KHHDon>'   ).append(root.find(selector.KHHDon).text()),
+          $('<td class=NBan>'     ).append(root.find(selector.NBan  ).text()),
+          $('<td class=MSTban>'   ).append(root.find(selector.MSTban).text()),
+          $('<td class=NMua>'     ).append(root.find(selector.NMua  ).text()),
+          $('<td class=MSTmua>'   ).append(root.find(selector.MSTmua).text()),
+          $('<td class=TgTCThue>' ).append(root.find(selector.TgTCThue).text().replace(/[.,](?=\d{3}\b)|[.,]0+ *$/g, '')),
+          $('<td class=TgTThue>'  ).append(root.find(selector.TgTThue ).text().replace(/[.,](?=\d{3}\b)|[.,]0+ *$/g, '')),
+          $('<td class=TgTTTBSo>' ).append(root.find(selector.TgTTTBSo).text().replace(/[.,](?=\d{3}\b)|[.,]0+ *$/g, '')),
+          $('<td class=file>').append(fileName)
         ]
+        // https://thuvienphapluat.vn/van-ban/Thue-Phi-Le-Phi/Quyet-dinh-1450-QD-TCT-2021-thanh-phan-chua-du-lieu-nghiep-vu-hoa-don-dien-tu-490526.aspx
+
         const id = cols[0].text() + cols[1].text() + cols[4].text() // NLap, SHDon, MST
         $('#result > tbody').append($('<tr>').attr('id', id).append(cols)) // add 1 row for each file
         $('.columnToggler input').change() // show/hide columns in #result
