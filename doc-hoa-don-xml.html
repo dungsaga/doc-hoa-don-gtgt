@@ -164,6 +164,7 @@
 
     const selectors = {
       ThongTinHoaDon: {
+        root      : 'HoaDonDienTu:root >HoaDon >ThongTinHoaDon',
         NLap      : '>NgayHoaDon',
         SHDon     : '>SoHoaDon',
         KHHDon    : '>Kyhieu',
@@ -176,6 +177,7 @@
         TgTTTBSo  : '>TongTien',
       },
       Invoice: {
+        root      : 'Invoice:root',
         NLap      : '>Content >ArisingDate',
         SHDon     : '>Content >InvoiceNo',
         KHHDon    : '>Content >SerialNo',
@@ -188,6 +190,7 @@
         TgTTTBSo  : '>Content >Amount',
       },
       invoiceData: {
+        root      : 'invoice:root >invoiceData',
         NLap      : '>invoiceIssuedDate',
         SHDon     : '>invoiceNumber',
         KHHDon    : '>invoiceSeries',
@@ -200,6 +203,7 @@
         TgTTTBSo  : '>totalAmountWithVAT',
       },
       INVOICEDATA: {
+        root      : 'INVOICEDATA:root',
         NLap      : '>MAIN >INVOICE_DATE',
         SHDon     : '>MAIN >SERI_NO',
         KHHDon    : '>MAIN >KY_HIEU',
@@ -211,23 +215,25 @@
         TgTThue   : '>GETVAT  >VN_VAT',
         TgTTTBSo  : '>PAYMENT >AMOUNT', // >SALETOTAL >VN_SUM
       },
-      HDon: {
-        NLap      : '>DLHDon >TTChung >NLap',
-        SHDon     : '>DLHDon >TTChung >SHDon',
-        KHHDon    : '>DLHDon >TTChung >KHHDon',
-        NBan      : '>DLHDon >NDHDon  >NBan  >Ten',
-        MSTban    : '>DLHDon >NDHDon  >NBan  >MST',
-        NMua      : '>DLHDon >NDHDon  >NMua  >Ten',
-        MSTmua    : '>DLHDon >NDHDon  >NMua  >MST',
-        TgTCThue  : '>DLHDon >NDHDon  >TToan >TgTCThue',
-        TgTThue   : '>DLHDon >NDHDon  >TToan >TgTThue',
-        TgTTTBSo  : '>DLHDon >NDHDon  >TToan >TgTTTBSo',
+      DLHDon: {
+        root      : 'HDon:root >DLHDon, TDiep:root >DLieu >HDon >DLHDon',
+        NLap      : '>TTChung >NLap',
+        SHDon     : '>TTChung >SHDon',
+        KHHDon    : '>TTChung >KHHDon',
+        NBan      : '>NDHDon  >NBan  >Ten',
+        MSTban    : '>NDHDon  >NBan  >MST',
+        NMua      : '>NDHDon  >NMua  >Ten',
+        MSTmua    : '>NDHDon  >NMua  >MST',
+        TgTCThue  : '>NDHDon  >TToan >TgTCThue',
+        TgTThue   : '>NDHDon  >TToan >TgTThue',
+        TgTTTBSo  : '>NDHDon  >TToan >TgTTTBSo',
       },
     }
     function parseData(xmlData, fileName) { // parse xml data and append to #result
       try {
         const xml = $.parseXML(xmlData.replace(/(<\/?)inv:/g, '$1'))
-        const root = $('HoaDonDienTu:root >HoaDon >ThongTinHoaDon , Invoice:root , invoice:root >invoiceData , INVOICEDATA:root , HDon:root , TDiep:root >DLieu >HDon', xml).last() // TDiep.DLieu.HDon
+        const rootSelectors = $.map(selectors, v=>v.root)
+        const root = $(rootSelectors.join(','), xml).last()
         if (!root.length) return Error('Cannot detect schema of XML invoice')
         const selector = selectors[root[0].tagName]
         const cols = [
